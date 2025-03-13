@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>amino acid memory test</title>
+    <style>
+        body {
+            font-family: 'Consolas', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        label {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        input {
+            width: 300px;
+            font-size: 16px;
+            padding: 5px;
+            margin: 10px 0;
+            font-family: 'Consolas', sans-serif; /* 设置输入栏字体为 Consolas */
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .button-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        button {
+            font-size: 16px;
+            padding: 5px 10px;
+        }
+
+        .shortcut-tip {
+            font-size: 12px;
+            color: gray;
+            text-align: center;
+        }
+
+        #output {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        #stats {
+            font-size: 14px;
+            margin: 10px 0;
+        }
+
+        #record-output {
+            white-space: pre-line;
+        }
+    </style>
+</head>
+
+<body>
+    <label id="known-label">已知：</label>
+    <label id="answer-label">回答：</label>
+    <input type="text" id="input-field" placeholder="在此输入答案"> <!-- 添加 placeholder 属性 -->
+    <div class="button-container">
+        <div class="button-wrapper">
+            <button id="answer-button">提交答案</button>
+            <div class="shortcut-tip">Enter</div>
+        </div>
+        <div class="button-wrapper">
+            <button id="change-question-button">更换题目</button>
+            <div class="shortcut-tip">Tab</div>
+        </div>
+        <div class="button-wrapper">
+            <button id="toggle-correct-button">记录对题</button>
+            <div class="shortcut-tip" id="correct-tip">off</div> <!-- 初始显示为 off -->
+        </div>
+        <div class="button-wrapper">
+            <button id="toggle-wrong-button">记录错题</button>
+            <div class="shortcut-tip" id="wrong-tip">on</div>
+        </div>
+        <div class="button-wrapper">
+            <button id="clear-records-button">清空记录</button>
+        </div>
+        <div class="button-wrapper">
+            <button id="save-records-button">保存记录</button>
+        </div>
+    </div>
+    <div id="output"></div>
+    <div id="stats">
+        <p>正确数: <span id="correct-count">0</span></p>
+        <p>刷题数: <span id="total-count">0</span></p>
+        <p>正确率: <span id="accuracy">0.00%</span></p>
+    </div>
+    <div id="record-output"></div>
+
+    <script>
+        const amino_acid_list = [
+            ["丙氨酸", "Ala", "A"],
+            ["精氨酸", "Arg", "R"],
+            ["天冬酰胺", "Asn", "N"],
+            ["天冬氨酸", "Asp", "D"],
+            ["半胱氨酸", "Cys", "C"],
+            ["谷氨酰胺", "Gln", "Q"],
+            ["谷氨酸", "Glu", "E"],
+            ["甘氨酸", "Gly", "G"],
+            ["组氨酸", "His", "H"],
+            ["异亮氨酸", "Ile", "I"],
+            ["亮氨酸", "Leu", "L"],
+            ["赖氨酸", "Lys", "K"],
+            ["蛋氨酸", "Met", "M"],
+            ["苯丙氨酸", "Phe", "F"],
+            ["脯氨酸", "Pro", "P"],
+            ["丝氨酸", "Ser", "S"],
+            ["苏氨酸", "Thr", "T"],
+            ["色氨酸", "Trp", "W"],
+            ["酪氨酸", "Tyr", "Y"],
+            ["缬氨酸", "Val", "V"]
+        ];
+        const amino_acid_type = ["中文名", "三字母缩写", "单字母缩写"];
+
+        let correct_count = 0;
+        let total_count = 0;
+
+        let record_correct_enabled = false;
+        let record_wrong_enabled = true;
+
+        let records = [];
+
+        function generate_random_question() {
+            const x = Math.floor(Math.random() * amino_acid_list.length);
+            const y = Math.floor(Math.random() * 3);
+            let z = Math.floor(Math.random() * 3);
+            while (z === y) {
+                z = Math.floor(Math.random() * 3);
+            }
+            let question = amino_acid_list[x][y];
+            if (question === "蛋氨酸") {
+                if (Math.floor(Math.random() * 2) === 0) {
+                    question = "甲硫氨酸";
+                }
+            }
+            const question_type = amino_acid_type[z];
+            let answer = amino_acid_list[x][z];
+            if (answer === "蛋氨酸") {
+                answer = "蛋氨酸,甲硫氨酸";
+            }
+            return [question, question_type, answer];
+        }
+
+        let [random_amino_question, random_amino_question_type, random_amino_answer] = generate_random_question();
+
+        function change_question() {
+            [random_amino_question, random_amino_question_type, random_amino_answer] = generate_random_question();
+            const known_label = document.getElementById('known-label');
+            const answer_label = document.getElementById('answer-label');
+            const input_field = document.getElementById('input-field');
+            const output = document.getElementById('output');
+
+            known_label.textContent = `已知：${random_amino_question}`;
+            answer_label.textContent = `回答：${random_amino_question_type}`;
+            input_field.value = '';
+            output.textContent = '';
+            input_field.focus();
+        }
+
+        function record_question(question, question_type, user_answer, correct_answer, result) {
+            if ((result === "√" && record_correct_enabled) || (result === "×" && record_wrong_enabled)) {
+                const now = new Date();
+                const time_str = `[${String(now.getFullYear()).slice(-2)}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}]`;
+                records.push(`${time_str}(${result})${question}的${question_type}，正确答案: ${correct_answer}，你的回答: ${user_answer}`);
+                const record_output = document.getElementById('record-output');
+                record_output.innerHTML = records.join('<br>');
+            }
+        }
+
+        function clear_records() {
+            const output = document.getElementById('output');
+            const now = new Date();
+            const time_str = `[${String(now.getFullYear()).slice(-2)}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}]`;
+            records = [];
+            records.push(`${time_str} 记录被清空喽~`);
+            const record_output = document.getElementById('record-output');
+            record_output.innerHTML = records.join('<br>');
+            output.textContent = "记录被清空喽~";
+        }
+
+        function toggle_record_correct() {
+            record_correct_enabled = !record_correct_enabled;
+            const correct_button = document.getElementById('toggle-correct-button');
+            correct_button.style.backgroundColor = record_correct_enabled ? 'gray' : '';
+            const correctTip = document.getElementById('correct-tip');
+            correctTip.textContent = record_correct_enabled ? 'on' : 'off';
+        }
+
+        function toggle_record_wrong() {
+            record_wrong_enabled = !record_wrong_enabled;
+            const wrong_button = document.getElementById('toggle-wrong-button');
+            wrong_button.style.backgroundColor = record_wrong_enabled ? 'gray' : '';
+            const wrongTip = document.getElementById('wrong-tip');
+            wrongTip.textContent = record_wrong_enabled ? 'on' : 'off';
+        }
+
+        function answer() {
+            const input_field = document.getElementById('input-field');
+            const output = document.getElementById('output');
+            const correct_count_span = document.getElementById('correct-count');
+            const total_count_span = document.getElementById('total-count');
+            const accuracy_span = document.getElementById('accuracy');
+
+            const input_content = input_field.value.trim().toLowerCase();
+            const correct_answers = random_amino_answer.split(',').map(ans => ans.trim().toLowerCase());
+
+            function is_chinese(s) {
+                return /^[\u4e00-\u9fff]+$/.test(s);
+            }
+
+            total_count++;
+            let is_correct = false;
+
+            if (input_content === '') {
+                is_correct = false;
+            } else if (correct_answers.some(ans => is_chinese(ans))) {
+                for (const ans of correct_answers) {
+                    if (ans.startsWith(input_content)) {
+                        is_correct = true;
+                        break;
+                    }
+                }
+            } else {
+                if (correct_answers.includes(input_content)) {
+                    is_correct = true;
+                }
+            }
+
+            const result = is_correct ? "√" : "×";
+            record_question(random_amino_question, random_amino_question_type, input_field.value, random_amino_answer, result);
+
+            if (is_correct) {
+                correct_count++;
+                change_question();
+                output.textContent = "回答正确！";
+            } else {
+                output.textContent = `回答错误！正确答案为${random_amino_answer}`;
+                input_field.value = '';
+            }
+
+            const accuracy = total_count > 0 ? (correct_count / total_count * 100).toFixed(2) : 0;
+            correct_count_span.textContent = correct_count;
+            total_count_span.textContent = total_count;
+            accuracy_span.textContent = `${accuracy}%`;
+        }
+
+        function saveRecordsAsTxt() {
+            const recordText = records.join('\n');
+            const blob = new Blob([recordText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '刷题记录.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                answer();
+            } else if (event.key === 'Tab') {
+                event.preventDefault();
+                change_question();
+            }
+        });
+
+        const known_label = document.getElementById('known-label');
+        const answer_label = document.getElementById('answer-label');
+        known_label.textContent = `已知：${random_amino_question}`;
+        answer_label.textContent = `回答：${random_amino_question_type}`;
+
+        const answer_button = document.getElementById('answer-button');
+        answer_button.addEventListener('click', answer);
+
+        const change_question_button = document.getElementById('change-question-button');
+        change_question_button.addEventListener('click', change_question);
+
+        const toggle_correct_button = document.getElementById('toggle-correct-button');
+        toggle_correct_button.addEventListener('click', toggle_record_correct);
+
+        const toggle_wrong_button = document.getElementById('toggle-wrong-button');
+        toggle_wrong_button.addEventListener('click', toggle_record_wrong);
+
+        const clear_records_button = document.getElementById('clear-records-button');
+        clear_records_button.addEventListener('click', clear_records);
+
+        const saveRecordsButton = document.getElementById('save-records-button');
+        saveRecordsButton.addEventListener('click', saveRecordsAsTxt);
+
+        const input_field = document.getElementById('input-field');
+        input_field.focus();
+
+        const wrong_button = document.getElementById('toggle-wrong-button');
+        wrong_button.style.backgroundColor = 'gray';
+    </script>
+</body>
+
+</html>
