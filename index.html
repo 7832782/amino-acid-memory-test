@@ -24,17 +24,17 @@
             font-size: 16px;
             padding: 5px;
             margin: 10px 0;
-            font-family: 'Consolas', sans-serif; /* 设置输入栏字体为 Consolas */
+            font-family: 'Consolas', sans-serif;
         }
 
-        .button-container {
+       .button-container {
             display: flex;
             justify-content: center;
             gap: 10px;
             margin: 20px 0;
         }
 
-        .button-wrapper {
+       .button-wrapper {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -45,7 +45,7 @@
             padding: 5px 10px;
         }
 
-        .shortcut-tip {
+       .shortcut-tip {
             font-size: 12px;
             color: gray;
             text-align: center;
@@ -63,6 +63,43 @@
 
         #record-output {
             white-space: pre-line;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* 版本信息模态框样式 */
+       .version-modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+       .version-modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+        }
+
+       .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+       .close:hover,
+       .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -70,7 +107,7 @@
 <body>
     <label id="known-label">已知：</label>
     <label id="answer-label">回答：</label>
-    <input type="text" id="input-field" placeholder="在此输入答案"> <!-- 添加 placeholder 属性 -->
+    <input type="text" id="input-field" placeholder="在此输入答案">
     <div class="button-container">
         <div class="button-wrapper">
             <button id="answer-button">提交答案</button>
@@ -82,7 +119,7 @@
         </div>
         <div class="button-wrapper">
             <button id="toggle-correct-button">记录对题</button>
-            <div class="shortcut-tip" id="correct-tip">off</div> <!-- 初始显示为 off -->
+            <div class="shortcut-tip" id="correct-tip">off</div>
         </div>
         <div class="button-wrapper">
             <button id="toggle-wrong-button">记录错题</button>
@@ -102,6 +139,27 @@
         <p>正确率: <span id="accuracy">0.00%</span></p>
     </div>
     <div id="record-output"></div>
+
+    <!-- 版本信息模态框 -->
+    <div id="version-modal" class="version-modal">
+        <div class="version-modal-content">
+            <span class="close">&times;</span>
+            <h2>版本信息</h2>
+            <h3>v1.1 - 2025/3/15</h3>
+            <p>1. 底部增添“返回索引”和“版本信息”，分别用于跳转索引与弹出更新日志。</p>
+            <p>2. 做题记录在过长时增加了滚动条。</p>
+            <p>3. 调整记录逻辑，最新的题目会放到最前面。</p>
+            <p>4. 输入答案超10字符不再记录。</p>
+            <h3>v1.0 - 2025/3/9</h3>
+            <p>创建该程序。</p>
+        </div>
+    </div>
+
+    <!-- 底部链接 -->
+    <div>
+        <a href="https://7832782.github.io">返回索引</a>
+        <a href="#" id="version-info-link">v1.1</a>
+    </div>
 
     <script>
         const amino_acid_list = [
@@ -174,10 +232,14 @@
         }
 
         function record_question(question, question_type, user_answer, correct_answer, result) {
+            if (user_answer.length > 10) {
+                return;
+            }
             if ((result === "√" && record_correct_enabled) || (result === "×" && record_wrong_enabled)) {
                 const now = new Date();
                 const time_str = `[${String(now.getFullYear()).slice(-2)}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}]`;
-                records.push(`${time_str}(${result})${question}的${question_type}，正确答案: ${correct_answer}，你的回答: ${user_answer}`);
+                const record = `${time_str}(${result})${question}的${question_type}，正确答案: ${correct_answer}，你的回答: ${user_answer}`;
+                records.unshift(record);
                 const record_output = document.getElementById('record-output');
                 record_output.innerHTML = records.join('<br>');
             }
@@ -188,26 +250,26 @@
             const now = new Date();
             const time_str = `[${String(now.getFullYear()).slice(-2)}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}]`;
             records = [];
-            records.push(`${time_str} 记录被清空喽~`);
+            records.unshift(`${time_str} 记录被清空喽~`);
             const record_output = document.getElementById('record-output');
             record_output.innerHTML = records.join('<br>');
             output.textContent = "记录被清空喽~";
         }
 
         function toggle_record_correct() {
-            record_correct_enabled = !record_correct_enabled;
+            record_correct_enabled =!record_correct_enabled;
             const correct_button = document.getElementById('toggle-correct-button');
-            correct_button.style.backgroundColor = record_correct_enabled ? 'gray' : '';
+            correct_button.style.backgroundColor = record_correct_enabled? 'gray' : '';
             const correctTip = document.getElementById('correct-tip');
-            correctTip.textContent = record_correct_enabled ? 'on' : 'off';
+            correctTip.textContent = record_correct_enabled? 'on' : 'off';
         }
 
         function toggle_record_wrong() {
-            record_wrong_enabled = !record_wrong_enabled;
+            record_wrong_enabled =!record_wrong_enabled;
             const wrong_button = document.getElementById('toggle-wrong-button');
-            wrong_button.style.backgroundColor = record_wrong_enabled ? 'gray' : '';
+            wrong_button.style.backgroundColor = record_wrong_enabled? 'gray' : '';
             const wrongTip = document.getElementById('wrong-tip');
-            wrongTip.textContent = record_wrong_enabled ? 'on' : 'off';
+            wrongTip.textContent = record_wrong_enabled? 'on' : 'off';
         }
 
         function answer() {
@@ -242,7 +304,7 @@
                 }
             }
 
-            const result = is_correct ? "√" : "×";
+            const result = is_correct? "√" : "×";
             record_question(random_amino_question, random_amino_question_type, input_field.value, random_amino_answer, result);
 
             if (is_correct) {
@@ -254,7 +316,7 @@
                 input_field.value = '';
             }
 
-            const accuracy = total_count > 0 ? (correct_count / total_count * 100).toFixed(2) : 0;
+            const accuracy = total_count > 0? (correct_count / total_count * 100).toFixed(2) : 0;
             correct_count_span.textContent = correct_count;
             total_count_span.textContent = total_count;
             accuracy_span.textContent = `${accuracy}%`;
@@ -308,6 +370,25 @@
 
         const wrong_button = document.getElementById('toggle-wrong-button');
         wrong_button.style.backgroundColor = 'gray';
+
+        // 版本信息模态框相关代码
+        const versionModal = document.getElementById('version-modal');
+        const versionInfoLink = document.getElementById('version-info-link');
+        const closeButton = versionModal.querySelector('.close');
+
+        versionInfoLink.addEventListener('click', function () {
+            versionModal.style.display = 'block';
+        });
+
+        closeButton.addEventListener('click', function () {
+            versionModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', function (event) {
+            if (event.target === versionModal) {
+                versionModal.style.display = 'none';
+            }
+        });
     </script>
 </body>
 
